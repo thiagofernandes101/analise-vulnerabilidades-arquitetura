@@ -1,0 +1,6 @@
+# Core dependencies
+# Add your project dependencies here
+requests
+
+# Debug dependencies
+debugpy

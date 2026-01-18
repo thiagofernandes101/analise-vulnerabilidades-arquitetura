@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    volumes:
+      # Mount source code for hot reloading/editing without rebuilds
+      - ./src:/app/src
+    environment:
+      - APP_ENV=development
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5678:5678"
+    # Command to run with debugpy listening
+    # --listen 0.0.0.0:5678 allows external connections (from host)
+    # --wait-for-client ensures script doesn't run until you attach (optional, remove if unwanted)
+    command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client src/main.py

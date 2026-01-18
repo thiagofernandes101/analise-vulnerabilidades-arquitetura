@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    volumes:
+      # In release mode, we might not want to mount the code to simulate production
+      # But for dev convenience, usually we do. For strict "release behavior", we use the copy in the image.
+      # We'll rely on the COPY in Dockerfile for code.
+      - ./data:/app/data # Example data volume if needed
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_ENV=production
+    command: python src/main.py
