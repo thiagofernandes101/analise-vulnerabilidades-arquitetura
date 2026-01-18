@@ -4,3 +4,10 @@ requests
 
 # Debug dependencies
 debugpy
+
+# YOLO and Threat Modeling dependencies
+ultralytics
+xmltodict
+scikit-learn
+PyYAML
+tqdm
