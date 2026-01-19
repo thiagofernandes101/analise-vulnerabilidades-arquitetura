@@ -22,7 +22,8 @@ class ModelTrainer:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.model = YOLO(self.model_name)
 
-    def train(self, data_yaml: Path, epochs: int = 50, img_size: int = 640) -> Path:
+    def train(self, data_yaml: Path, epochs: int = 50, img_size: int = 640, 
+              patience: int = 50, batch: int = 16, workers: int = 8, cache: bool = True, resume: bool = False) -> Path:
         """
         Runs the training process.
 
@@ -30,21 +31,44 @@ class ModelTrainer:
             data_yaml (Path): Path to the data.yaml file.
             epochs (int): Number of training epochs.
             img_size (int): Image size.
+            patience (int): Epochs to wait for no improvement before stopping.
+            batch (int): Batch size.
+            workers (int): Number of worker threads for data loading.
+            cache (bool): Whether to cache images in RAM (True) or disk (False).
+            resume (bool): Whether to resume training from the last checkpoint.
         
         Returns:
             Path: Path to the best trained model.
         """
         logger.info(f"Starting training for {epochs} epochs using {data_yaml}...")
+        logger.info(f"Performance tuning: Batch={batch}, Workers={workers}, Cache={cache}, Patience={patience}, Resume={resume}")
         
-        # Train model
-        results = self.model.train(
-            data=str(data_yaml),
-            epochs=epochs,
-            imgsz=img_size,
-            project=str(self.output_dir),
-            name="train_run",
-            exist_ok=True
-        )
+        last_ckpt = self.output_dir / "train_run" / "weights" / "last.pt"
+        
+        if resume and last_ckpt.exists():
+            logger.info(f"Resuming training from checkpoint: {last_ckpt}")
+            # Load the checkpoint model explicitly
+            self.model = YOLO(last_ckpt)
+            # Resume training
+            results = self.model.train(resume=True)
+        else:
+            if resume:
+                logger.warning(f"Resume requested but checkpoint not found at {last_ckpt}. Starting fresh training.")
+            
+            # Train model
+            results = self.model.train(
+                data=str(data_yaml),
+                epochs=epochs,
+                imgsz=img_size,
+                patience=patience,
+                batch=batch,
+                workers=workers,
+                cache=cache,
+                project=str(self.output_dir),
+                name="train_run",
+                exist_ok=True,
+                plots=True # Ensure plots are generated
+            )
         
         # Retrieve best model path
         # Ultralytics saves to project/name/weights/best.pt
@@ -52,10 +76,56 @@ class ModelTrainer:
         
         if best_model_path.exists():
             logger.info(f"Training complete. Best model saved at {best_model_path}")
+            
+            # Evaluate and log metrics
+            self._evaluate_and_log(best_model_path)
+            
             return best_model_path
         else:
             logger.error("Training completed but 'best.pt' was not found.")
             raise FileNotFoundError("best.pt not found after training.")
+
+    def _evaluate_and_log(self, model_path: Path) -> None:
+        """
+        Runs validation and logs performance metrics.
+        """
+        try:
+            # 1. Validation Metrics (mAP)
+            logger.info("Running validation to calculate accuracy (mAP)...")
+            val_results = self.model.val(split='val')
+            
+            # map50: Mean Average Precision at IoU=0.5
+            # map50-95: Mean Average Precision at IoU=[0.5:0.95]
+            map50 = val_results.box.map50
+            map50_95 = val_results.box.map
+            
+            logger.info(f"Validation Accuracy (mAP@50): {map50:.4f}")
+            logger.info(f"Validation Accuracy (mAP@50-95): {map50_95:.4f}")
+            
+            # 2. Training Losses (from results.csv)
+            results_csv = self.output_dir / "train_run" / "results.csv"
+            if results_csv.exists():
+                import pandas as pd
+                # Read CSV, stripping whitespace from column names
+                df = pd.read_csv(results_csv)
+                df.columns = df.columns.str.strip()
+                
+                # Get last epoch metrics
+                last_epoch = df.iloc[-1]
+                train_box_loss = last_epoch.get('train/box_loss', 0)
+                train_cls_loss = last_epoch.get('train/cls_loss', 0)
+                val_box_loss = last_epoch.get('val/box_loss', 0)
+                val_cls_loss = last_epoch.get('val/cls_loss', 0)
+                
+                logger.info("Training Metrics (Last Epoch):")
+                logger.info(f"  - Train Box Loss: {train_box_loss:.4f}")
+                logger.info(f"  - Train Class Loss: {train_cls_loss:.4f}")
+                logger.info(f"  - Val Box Loss: {val_box_loss:.4f}")
+                logger.info(f"  - Val Class Loss: {val_cls_loss:.4f}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to log detailed metrics: {e}")
+
 
     def publish_model(self, source_path: Path, version: str = "v1") -> Path:
         """

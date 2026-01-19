@@ -45,7 +45,15 @@ def run_training_pipeline(args):
          logger.error("data.yaml not found. Data prep failed.")
          return
 
-    best_model = trainer.train(data_yaml=data_yaml, epochs=args.epochs)
+    best_model = trainer.train(
+        data_yaml=data_yaml, 
+        epochs=args.epochs,
+        patience=args.patience,
+        batch=args.batch,
+        workers=args.workers,
+        cache=not args.no_cache,
+        resume=args.resume
+    )
     
     # 3. Publish Model
     published_model = trainer.publish_model(best_model, version="v1")
@@ -94,6 +102,11 @@ def main():
     train_parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
     train_parser.add_argument("--model-name", type=str, default="yolov8n.pt", help="Base model")
     train_parser.add_argument("--test-split", type=float, default=0.2, help="Validation split size")
+    train_parser.add_argument("--patience", type=int, default=50, help="Early stopping patience")
+    train_parser.add_argument("--batch", type=int, default=16, help="Batch size")
+    train_parser.add_argument("--workers", type=int, default=8, help="Data loader workers")
+    train_parser.add_argument("--no-cache", action="store_true", help="Disable RAM caching")
+    train_parser.add_argument("--resume", action="store_true", help="Resume training from last checkpoint")
 
     # Inference Command
     inf_parser = subparsers.add_parser("inference", help="Run threat modeling on an image")

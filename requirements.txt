@@ -11,3 +11,4 @@ xmltodict
 scikit-learn
 PyYAML
 tqdm
+pandas
