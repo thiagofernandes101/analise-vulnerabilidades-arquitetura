@@ -45,6 +45,15 @@ def run_training_pipeline(args):
          logger.error("data.yaml not found. Data prep failed.")
          return
 
+    # Check for existing checkpoint to resume
+    last_ckpt = models_dir / "train_run" / "weights" / "last.pt"
+    should_resume = args.resume or last_ckpt.exists()
+    
+    if should_resume and last_ckpt.exists():
+        logger.info(f"Found existing checkpoint at {last_ckpt}. Resuming training...")
+    elif should_resume and not last_ckpt.exists():
+        logger.warning("Resume requested/inferred but no checkpoint found. Starting fresh.")
+
     best_model = trainer.train(
         data_yaml=data_yaml, 
         epochs=args.epochs,
@@ -52,7 +61,7 @@ def run_training_pipeline(args):
         batch=args.batch,
         workers=args.workers,
         cache=not args.no_cache,
-        resume=args.resume
+        resume=should_resume
     )
     
     # 3. Publish Model
