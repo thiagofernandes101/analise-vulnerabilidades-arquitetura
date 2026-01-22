@@ -45,23 +45,14 @@ def run_training_pipeline(args):
          logger.error("data.yaml not found. Data prep failed.")
          return
 
-    # Check for existing checkpoint to resume
-    last_ckpt = models_dir / "train_run" / "weights" / "last.pt"
-    should_resume = args.resume or last_ckpt.exists()
-    
-    if should_resume and last_ckpt.exists():
-        logger.info(f"Found existing checkpoint at {last_ckpt}. Resuming training...")
-    elif should_resume and not last_ckpt.exists():
-        logger.warning("Resume requested/inferred but no checkpoint found. Starting fresh.")
-
+    # Training with automatic resume detection (handled internally by trainer)
     best_model = trainer.train(
         data_yaml=data_yaml, 
         epochs=args.epochs,
         patience=args.patience,
         batch=args.batch,
         workers=args.workers,
-        cache=not args.no_cache,
-        resume=should_resume
+        cache=not args.no_cache
     )
     
     # 3. Publish Model
@@ -115,7 +106,6 @@ def main():
     train_parser.add_argument("--batch", type=int, default=16, help="Batch size")
     train_parser.add_argument("--workers", type=int, default=8, help="Data loader workers")
     train_parser.add_argument("--no-cache", action="store_true", help="Disable RAM caching")
-    train_parser.add_argument("--resume", action="store_true", help="Resume training from last checkpoint")
 
     # Inference Command
     inf_parser = subparsers.add_parser("inference", help="Run threat modeling on an image")

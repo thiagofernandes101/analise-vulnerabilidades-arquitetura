@@ -23,9 +23,14 @@ class ModelTrainer:
         self.model = YOLO(self.model_name)
 
     def train(self, data_yaml: Path, epochs: int = 50, img_size: int = 640, 
-              patience: int = 50, batch: int = 16, workers: int = 8, cache: bool = True, resume: bool = False) -> Path:
+              patience: int = 50, batch: int = 16, workers: int = 8, cache: bool = True) -> Path:
         """
-        Runs the training process.
+        Runs the training process with automatic resume detection.
+        
+        Resume behavior:
+        - If a checkpoint exists and training was INTERRUPTED (epoch < target), resume automatically
+        - If a checkpoint exists but training was COMPLETED, start fresh training
+        - If no checkpoint exists, start fresh training
 
         Args:
             data_yaml (Path): Path to the data.yaml file.
@@ -35,27 +40,58 @@ class ModelTrainer:
             batch (int): Batch size.
             workers (int): Number of worker threads for data loading.
             cache (bool): Whether to cache images in RAM (True) or disk (False).
-            resume (bool): Whether to resume training from the last checkpoint.
         
         Returns:
             Path: Path to the best trained model.
         """
         logger.info(f"Starting training for {epochs} epochs using {data_yaml}...")
-        logger.info(f"Performance tuning: Batch={batch}, Workers={workers}, Cache={cache}, Patience={patience}, Resume={resume}")
+        logger.info(f"Performance tuning: Batch={batch}, Workers={workers}, Cache={cache}, Patience={patience}")
         
         last_ckpt = self.output_dir / "train_run" / "weights" / "last.pt"
+        args_yaml = self.output_dir / "train_run" / "args.yaml"
         
-        if resume and last_ckpt.exists():
+        should_resume = False
+        
+        # Check if we should resume from an interrupted training
+        if last_ckpt.exists() and args_yaml.exists():
+            try:
+                import yaml
+                with open(args_yaml, 'r') as f:
+                    saved_args = yaml.safe_load(f)
+                
+                saved_epochs = saved_args.get('epochs', 0)
+                
+                # Check results.csv to see how many epochs were completed
+                results_csv = self.output_dir / "train_run" / "results.csv"
+                if results_csv.exists():
+                    import pandas as pd
+                    df = pd.read_csv(results_csv)
+                    completed_epochs = len(df)
+                    
+                    if completed_epochs < saved_epochs:
+                        # Training was interrupted - resume
+                        logger.info(f"Detected interrupted training: {completed_epochs}/{saved_epochs} epochs completed")
+                        should_resume = True
+                    else:
+                        # Training completed - check if user wants more epochs
+                        if epochs > saved_epochs:
+                            logger.info(f"Previous training completed {saved_epochs} epochs. Starting fresh with {epochs} epochs.")
+                        else:
+                            logger.info(f"Previous training already completed {completed_epochs} epochs. Starting fresh training.")
+                else:
+                    # No results.csv but checkpoint exists - might be corrupted, start fresh
+                    logger.warning("Checkpoint exists but no results.csv found. Starting fresh training.")
+            except Exception as e:
+                logger.warning(f"Could not read training state: {e}. Starting fresh training.")
+        
+        if should_resume:
             logger.info(f"Resuming training from checkpoint: {last_ckpt}")
-            # Load the checkpoint model explicitly
             self.model = YOLO(last_ckpt)
-            # Resume training
             results = self.model.train(resume=True)
         else:
-            if resume:
-                logger.warning(f"Resume requested but checkpoint not found at {last_ckpt}. Starting fresh training.")
+            # Fresh training - use the pretrained base model
+            self.model = YOLO(self.model_name)
             
-            # Train model
             results = self.model.train(
                 data=str(data_yaml),
                 epochs=epochs,
@@ -67,19 +103,15 @@ class ModelTrainer:
                 project=str(self.output_dir),
                 name="train_run",
                 exist_ok=True,
-                plots=True # Ensure plots are generated
+                plots=True
             )
         
         # Retrieve best model path
-        # Ultralytics saves to project/name/weights/best.pt
         best_model_path = self.output_dir / "train_run" / "weights" / "best.pt"
         
         if best_model_path.exists():
             logger.info(f"Training complete. Best model saved at {best_model_path}")
-            
-            # Evaluate and log metrics
             self._evaluate_and_log(best_model_path)
-            
             return best_model_path
         else:
             logger.error("Training completed but 'best.pt' was not found.")
