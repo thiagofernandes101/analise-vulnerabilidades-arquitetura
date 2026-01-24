@@ -6,6 +6,7 @@ services:
       - ./dataset:/app/dataset
       - ./src:/app/src
       - ./models:/app/models
+      - ./input_images:/app/input_images
     environment:
       - APP_ENV=development
       - PYTHONUNBUFFERED=1
@@ -14,4 +15,4 @@ services:
     # Command to run with debugpy listening
     # --listen 0.0.0.0:5678 allows external connections (from host)
     # --wait-for-client ensures script doesn't run until you attach (optional, remove if unwanted)
-    command: python -m debugpy --listen 0.0.0.0:5678 src/main.py train --epochs 10 --patience 20 --batch 16
+    command: python -m debugpy --listen 0.0.0.0:5678 src/main.py train --epochs 30 --patience 30 --batch 16

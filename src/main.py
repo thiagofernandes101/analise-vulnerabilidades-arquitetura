@@ -4,6 +4,9 @@ import sys
 import os
 from pathlib import Path
 
+# Ensure src is in path for module discovery
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -111,7 +114,7 @@ def main():
     inf_parser = subparsers.add_parser("inference", help="Run threat modeling on an image")
     inf_parser.add_argument("--image", type=str, required=True, help="Path to input image")
     inf_parser.add_argument("--model-path", type=str, help="Path to custom model .pt file")
-    inf_parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
+    inf_parser.add_argument("--conf", type=float, default=0.15, help="Confidence threshold")
 
     # If no args provided (e.g. running from F5 without args), print help or default to a safe action
     if len(sys.argv) == 1:
