@@ -86,9 +86,9 @@ def run_inference_pipeline(args):
         return
 
     # Run Inference
-    logger.info(f"Running inference on {image_path} using {model_path}...")
+    logger.info(f"Running inference on {image_path} using {model_path} at {args.imgsz}px...")
     modeler = ThreatModeler(model_path=model_path)
-    analysis = modeler.analyze_image(image_path, conf_threshold=args.conf)
+    analysis = modeler.analyze_image(image_path, conf_threshold=args.conf, imgsz=args.imgsz)
     
     # Generate Report
     output_report = image_path.with_name(f"{image_path.stem}_report.md")
@@ -115,6 +115,7 @@ def main():
     inf_parser.add_argument("--image", type=str, required=True, help="Path to input image")
     inf_parser.add_argument("--model-path", type=str, help="Path to custom model .pt file")
     inf_parser.add_argument("--conf", type=float, default=0.15, help="Confidence threshold")
+    inf_parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size (larger = better for small icons)")
 
     # If no args provided (e.g. running from F5 without args), print help or default to a safe action
     if len(sys.argv) == 1:

@@ -652,18 +652,19 @@ class ThreatModeler:
             raise FileNotFoundError(f"Model file not found: {self.model_path}")
         self.model = YOLO(self.model_path)
 
-    def analyze_image(self, image_path: Path, conf_threshold: float = 0.25) -> List[Dict[str, Any]]:
+    def analyze_image(self, image_path: Path, conf_threshold: float = 0.25, imgsz: int = 640) -> List[Dict[str, Any]]:
         """
         Runs inference on an image and maps results to threats.
 
         Args:
             image_path (Path): Path to the image file.
             conf_threshold (float): Confidence threshold for detections.
+            imgsz (int): Image size for inference (larger = better for small icons).
 
         Returns:
             List[Dict[str, Any]]: List of detected objects with their threats.
         """
-        results = self.model.predict(source=str(image_path), conf=conf_threshold)
+        results = self.model.predict(source=str(image_path), conf=conf_threshold, imgsz=imgsz)
         
         analysis_report = []
         
