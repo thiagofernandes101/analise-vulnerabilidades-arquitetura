@@ -668,8 +668,8 @@ class ThreatModeler:
             source=str(image_path), 
             conf=conf_threshold, 
             imgsz=imgsz,
-            iou=0.45,           # NMS IoU threshold
-            agnostic_nms=True   # NMS across all classes
+            iou=0.45,
+            agnostic_nms=True
         )
         
         analysis_report = []
@@ -697,6 +697,49 @@ class ThreatModeler:
         analysis_report = self._filter_hallucinations(analysis_report)
         
         return analysis_report
+
+    def _add_photo_artifacts(self, image: 'np.ndarray') -> 'np.ndarray':
+        """
+        Add photo-like artifacts to a clean digital image to match training domain.
+        The training data consists of photos/screenshots of diagrams with noise,
+        blur, and lighting variations.
+        
+        Args:
+            image: OpenCV BGR image
+            
+        Returns:
+            Augmented image with photo-like artifacts
+        """
+        import cv2
+        import numpy as np
+        
+        img = image.copy().astype(np.float32)
+        
+        # 1. Add more aggressive Gaussian blur (simulates camera/display)
+        img = cv2.GaussianBlur(img, (5, 5), 1.5)
+        
+        # 2. Add significant Gaussian noise (matches photo noise)
+        noise = np.random.normal(0, 15, img.shape)
+        img = img + noise
+        
+        # 3. Add uneven lighting (simulates photo conditions)
+        rows, cols = img.shape[:2]
+        gradient = np.linspace(0.9, 1.1, cols)
+        gradient = np.tile(gradient, (rows, 1))
+        gradient = np.dstack([gradient] * 3)
+        img = img * gradient
+        
+        # 4. Reduce contrast slightly (photos have less contrast)
+        img = 0.85 * img + 0.15 * 128
+        
+        # 5. Add slight color cast (display/camera color shift)
+        img[:, :, 0] = img[:, :, 0] * 0.98  # Less blue
+        img[:, :, 2] = img[:, :, 2] * 1.02  # More red
+        
+        # Clip and convert back
+        img = np.clip(img, 0, 255).astype(np.uint8)
+        
+        return img
 
     def _filter_hallucinations(
         self, 

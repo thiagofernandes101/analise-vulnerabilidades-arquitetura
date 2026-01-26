@@ -26,27 +26,37 @@ def run_training_pipeline(args):
     Executes the data preparation and training pipeline.
     """
     base_dir = Path(__file__).resolve().parent.parent
-    dataset_dir = base_dir / "dataset" / "dataset_augmented"
-    yolo_data_dir = base_dir / "dataset" / "yolo_format"
     models_dir = base_dir / "models"
     
-    # 1. Prepare Data
-    logger.info("Step 1: Preparing Data...")
-    if not dataset_dir.exists():
-        logger.error(f"Dataset directory not found: {dataset_dir}")
-        return
+    # Determine dataset path
+    if args.dataset:
+        # Use pre-merged/pre-prepared dataset
+        data_yaml = Path(args.dataset) / "data.yaml"
+        if not data_yaml.exists():
+            logger.error(f"data.yaml not found in {args.dataset}")
+            return
+        logger.info(f"Using pre-prepared dataset: {args.dataset}")
+    else:
+        # Original flow: convert from VOC to YOLO format
+        dataset_dir = base_dir / "dataset" / "dataset_augmented"
+        yolo_data_dir = base_dir / "dataset" / "yolo_format"
+        
+        logger.info("Step 1: Preparing Data...")
+        if not dataset_dir.exists():
+            logger.error(f"Dataset directory not found: {dataset_dir}")
+            return
 
-    converter = DatasetConverter(source_dir=dataset_dir, output_dir=yolo_data_dir)
-    converter.process(test_size=args.test_split)
+        converter = DatasetConverter(source_dir=dataset_dir, output_dir=yolo_data_dir)
+        converter.process(test_size=args.test_split)
+        data_yaml = yolo_data_dir / "data.yaml"
+        
+        if not data_yaml.exists():
+             logger.error("data.yaml not found. Data prep failed.")
+             return
     
-    # 2. Train Model
-    logger.info("Step 2: Training Model...")
+    # Train Model
+    logger.info("Training Model...")
     trainer = ModelTrainer(model_name=args.model_name, output_dir=models_dir)
-    data_yaml = yolo_data_dir / "data.yaml"
-    
-    if not data_yaml.exists():
-         logger.error("data.yaml not found. Data prep failed.")
-         return
 
     # Training with automatic resume detection (handled internally by trainer)
     best_model = trainer.train(
@@ -59,7 +69,7 @@ def run_training_pipeline(args):
         cache=not args.no_cache
     )
     
-    # 3. Publish Model
+    # Publish Model
     published_model = trainer.publish_model(best_model, version="v1")
     logger.info(f"Pipeline finished. Model ready at {published_model}")
 
@@ -103,13 +113,14 @@ def main():
 
     # Train Command
     train_parser = subparsers.add_parser("train", help="Train the model")
+    train_parser.add_argument("--dataset", type=str, help="Path to pre-prepared dataset (skips data prep)")
     train_parser.add_argument("--epochs", type=int, default=50, help="Number of epochs")
     train_parser.add_argument("--model-name", type=str, default="yolov8s.pt", help="Base model (yolov8n/s/m/l/x)")
     train_parser.add_argument("--imgsz", type=int, default=1280, help="Training image size")
     train_parser.add_argument("--test-split", type=float, default=0.2, help="Validation split size")
     train_parser.add_argument("--patience", type=int, default=15, help="Early stopping patience")
     train_parser.add_argument("--batch", type=int, default=4, help="Batch size (4 for 6GB VRAM, 8 for 8GB+)")
-    train_parser.add_argument("--workers", type=int, default=8, help="Data loader workers")
+    train_parser.add_argument("--workers", type=int, default=4, help="Data loader workers")
     train_parser.add_argument("--no-cache", action="store_true", help="Disable RAM caching")
 
     # Inference Command

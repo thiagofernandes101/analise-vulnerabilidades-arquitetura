@@ -25,6 +25,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
-    # Command for training with improved accuracy settings
-    # Batch=4 for RTX 3060 6GB VRAM, workers=4 to avoid RAM OOM
-    command: python -m debugpy --listen 0.0.0.0:5678 src/main.py train --epochs 50 --patience 15 --batch 4 --imgsz 1280 --workers 4
+    # Command for training with merged dataset (original + AWS Icon Detector + AWS System diagrams)
+    # 9580 images, 104 classes for better icon style coverage
+    command: python -m debugpy --listen 0.0.0.0:5678 src/main.py train --dataset /app/dataset/merged --epochs 40 --patience 15 --batch 4 --imgsz 1280 --workers 4
