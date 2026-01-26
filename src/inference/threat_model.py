@@ -664,7 +664,13 @@ class ThreatModeler:
         Returns:
             List[Dict[str, Any]]: List of detected objects with their threats.
         """
-        results = self.model.predict(source=str(image_path), conf=conf_threshold, imgsz=imgsz)
+        results = self.model.predict(
+            source=str(image_path), 
+            conf=conf_threshold, 
+            imgsz=imgsz,
+            iou=0.45,           # NMS IoU threshold
+            agnostic_nms=True   # NMS across all classes
+        )
         
         analysis_report = []
         
@@ -686,8 +692,104 @@ class ThreatModeler:
                     "threats": threats,
                     "bbox": box.xywh.tolist() # x, y, w, h
                 })
-                
+        
+        # Filter hallucinations while supporting multi-cloud
+        analysis_report = self._filter_hallucinations(analysis_report)
+        
         return analysis_report
+
+    def _filter_hallucinations(
+        self, 
+        detections: List[Dict[str, Any]],
+        base_conf_threshold: float = 0.25,
+        dominance_threshold: float = 0.60,
+        minority_high_conf: float = 0.70
+    ) -> List[Dict[str, Any]]:
+        """
+        Filter likely hallucinations while supporting multi-cloud architectures.
+        
+        Strategy:
+        - Calculate provider dominance based on weighted confidence
+        - If a provider is dominant (>60% of total confidence):
+          - Keep all dominant provider detections
+          - Only keep minority provider if confidence >= 0.70 (high confidence)
+        - If no clear dominant provider (balanced multi-cloud):
+          - Keep all detections >= base_conf_threshold
+        
+        Args:
+            detections: List of detection dicts
+            base_conf_threshold: Min confidence for balanced multi-cloud
+            dominance_threshold: Ratio for a provider to be "dominant" (0.60 = 60%)
+            minority_high_conf: Min confidence for minority provider detections
+        
+        Returns:
+            Filtered detections list
+        """
+        if not detections:
+            return detections
+        
+        # Group detections by provider
+        by_provider = {'aws': [], 'azure': [], 'gcp': [], 'other': []}
+        provider_weights = {'aws': 0.0, 'azure': 0.0, 'gcp': 0.0}
+        
+        for d in detections:
+            comp = d['component'].lower()
+            conf = d['confidence']
+            if comp.startswith('aws_'):
+                by_provider['aws'].append(d)
+                provider_weights['aws'] += conf
+            elif comp.startswith('azure_'):
+                by_provider['azure'].append(d)
+                provider_weights['azure'] += conf
+            elif comp.startswith('gcp_'):
+                by_provider['gcp'].append(d)
+                provider_weights['gcp'] += conf
+            else:
+                by_provider['other'].append(d)
+        
+        # Calculate dominance
+        total_weight = sum(provider_weights.values())
+        if total_weight == 0:
+            return detections
+        
+        dominant_provider = max(provider_weights, key=provider_weights.get)
+        dominance_ratio = provider_weights[dominant_provider] / total_weight
+        
+        filtered = []
+        
+        # Always keep 'other' (non-cloud) items
+        filtered.extend(by_provider['other'])
+        
+        if dominance_ratio >= dominance_threshold:
+            # Clear dominant provider - filter minority aggressively
+            for provider in ['aws', 'azure', 'gcp']:
+                items = by_provider[provider]
+                for d in items:
+                    if provider == dominant_provider:
+                        # Keep all from dominant provider
+                        filtered.append(d)
+                    elif d['confidence'] >= minority_high_conf:
+                        # Only keep high-confidence minority (could be valid hybrid)
+                        filtered.append(d)
+                    else:
+                        logger.info(
+                            f"Filtered hallucination: {d['component']} "
+                            f"(conf={d['confidence']:.2f}, dominant={dominant_provider})"
+                        )
+        else:
+            # Balanced multi-cloud - use normal threshold
+            for provider in ['aws', 'azure', 'gcp']:
+                items = by_provider[provider]
+                for d in items:
+                    if d['confidence'] >= base_conf_threshold:
+                        filtered.append(d)
+                    else:
+                        logger.info(
+                            f"Filtered low confidence: {d['component']} "
+                            f"(conf={d['confidence']:.2f})"
+                        )
+        
+        return filtered
 
     def generate_report(self, analysis: List[Dict[str, Any]], output_path: Path) -> None:
         """

@@ -103,7 +103,15 @@ class ModelTrainer:
                 project=str(self.output_dir),
                 name="train_run",
                 exist_ok=True,
-                plots=True
+                plots=True,
+                # Enhanced augmentation for better icon recognition
+                hsv_h=0.015,      # Color hue variation
+                hsv_s=0.7,        # Saturation variation  
+                hsv_v=0.4,        # Value variation
+                scale=0.9,        # Scale variation (important for icons)
+                mosaic=1.0,       # Mosaic augmentation
+                mixup=0.1,        # Mixup for generalization
+                copy_paste=0.1,   # Copy-paste augmentation
             )
         
         # Retrieve best model path

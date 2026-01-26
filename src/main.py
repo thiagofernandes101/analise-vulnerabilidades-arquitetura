@@ -52,6 +52,7 @@ def run_training_pipeline(args):
     best_model = trainer.train(
         data_yaml=data_yaml, 
         epochs=args.epochs,
+        img_size=args.imgsz,
         patience=args.patience,
         batch=args.batch,
         workers=args.workers,
@@ -102,11 +103,12 @@ def main():
 
     # Train Command
     train_parser = subparsers.add_parser("train", help="Train the model")
-    train_parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
-    train_parser.add_argument("--model-name", type=str, default="yolov8n.pt", help="Base model")
+    train_parser.add_argument("--epochs", type=int, default=50, help="Number of epochs")
+    train_parser.add_argument("--model-name", type=str, default="yolov8s.pt", help="Base model (yolov8n/s/m/l/x)")
+    train_parser.add_argument("--imgsz", type=int, default=1280, help="Training image size")
     train_parser.add_argument("--test-split", type=float, default=0.2, help="Validation split size")
-    train_parser.add_argument("--patience", type=int, default=50, help="Early stopping patience")
-    train_parser.add_argument("--batch", type=int, default=16, help="Batch size")
+    train_parser.add_argument("--patience", type=int, default=15, help="Early stopping patience")
+    train_parser.add_argument("--batch", type=int, default=4, help="Batch size (4 for 6GB VRAM, 8 for 8GB+)")
     train_parser.add_argument("--workers", type=int, default=8, help="Data loader workers")
     train_parser.add_argument("--no-cache", action="store_true", help="Disable RAM caching")
 
@@ -114,7 +116,7 @@ def main():
     inf_parser = subparsers.add_parser("inference", help="Run threat modeling on an image")
     inf_parser.add_argument("--image", type=str, required=True, help="Path to input image")
     inf_parser.add_argument("--model-path", type=str, help="Path to custom model .pt file")
-    inf_parser.add_argument("--conf", type=float, default=0.15, help="Confidence threshold")
+    inf_parser.add_argument("--conf", type=float, default=0.20, help="Confidence threshold")
     inf_parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size (larger = better for small icons)")
 
     # If no args provided (e.g. running from F5 without args), print help or default to a safe action
