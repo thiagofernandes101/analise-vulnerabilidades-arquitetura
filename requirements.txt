@@ -4,3 +4,13 @@ requests
 
 # Debug dependencies
 debugpy
+
+# YOLO and Threat Modeling dependencies
+# Pin versions for reproducible training results
+ultralytics==8.2.0
+torch>=2.0.0,<2.5.0
+xmltodict
+scikit-learn
+PyYAML
+tqdm
+pandas

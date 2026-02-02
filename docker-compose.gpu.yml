@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
     volumes:
       # Mount source code for hot reloading/editing without rebuilds
       - ./dataset:/app/dataset
@@ -10,9 +12,18 @@ services:
     environment:
       - APP_ENV=development
       - PYTHONUNBUFFERED=1
+      - NVIDIA_VISIBLE_DEVICES=all
+    # Increase shared memory for PyTorch data loaders
+    shm_size: '8gb'
     ports:
       - "5678:5678"
+    # Enable GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
     # Command to run with debugpy listening
-    # --listen 0.0.0.0:5678 allows external connections (from host)
-    # --wait-for-client ensures script doesn't run until you attach (optional, remove if unwanted)
     command: python -m debugpy --listen 0.0.0.0:5678 src/main.py train --epochs 30 --patience 30 --batch 16
