@@ -1,11 +1,12 @@
 services:
   app:
     build: .
+    ports:
+      - "5000:5000"
     volumes:
-      - ./dataset:/app/dataset
+      # Mount source code for hot reloading during development
       - ./src:/app/src
-      - ./models:/app/models
     environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
-      - APP_ENV=development
-    command: python src/main.py
