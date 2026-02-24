@@ -49,34 +49,33 @@ IMAGE_MAX_SIDE = 1536
 # ---------------------------------------------------------------------------
 # STRIDE prompt — concise but complete
 # ---------------------------------------------------------------------------
-STRIDE_ANALYSIS_PROMPT = """You are a cloud security expert. Analyse the architecture diagram and produce a STRIDE threat model report in Markdown.
+STRIDE_ANALYSIS_PROMPT = """You are a cloud security expert. Analyse the architecture diagram and produce a concise STRIDE threat report in Markdown.
 
-Output exactly these five sections:
+Output exactly these three sections — nothing else:
 
-## 1. Identified Components
-Table with columns: Component | Provider | Service | Role
+# [Architecture Title]
+A short, descriptive title for this architecture (replace the brackets with the actual title).
 
-## 2. Architecture Overview
-Describe data flows, trust boundaries, internet-facing entry points, and sensitive data stores.
+## Overview
+2–4 sentences describing the main data flow, trust boundaries, and internet-facing entry points.
 
-## 3. Threat Analysis by Component
-For each component identified in section 1, evaluate all six STRIDE categories:
-- **S (Spoofing)** – identity impersonation
-- **T (Tampering)** – data or code modification
-- **R (Repudiation)** – untracked actions / missing audit logs
-- **I (Information Disclosure)** – sensitive data exposure
-- **D (Denial of Service)** – resource exhaustion or availability attacks
-- **E (Elevation of Privilege)** – IAM / RBAC misconfigs, container escapes
+## Components & Threat Analysis
+A single table with these exact columns:
 
-For each applicable threat, give one specific, actionable mitigation. Mark N/A if the category truly does not apply.
+| Component | Provider | Service | Role | STRIDE Threats | Overall Risk |
+|---|---|---|---|---|---|
 
-## 4. Mitigation Recommendations
-Prioritised list of the top mitigations across the whole architecture.
+Rules for the **Threats** column:
+- Describe each applicable threat in plain language — what could go wrong, and the specific provider service or feature to fix it (e.g. "Unauthorised access possible — enable AWS Cognito MFA").
+- Keep each threat to one short sentence (max 15 words).
+- Separate multiple threats with ` · `.
+- Write `None` if no threats apply.
 
-## 5. Risk Summary
-Table with columns: STRIDE Category | Overall Risk (Critical / High / Medium / Low) | Rationale
+Rules for the **Overall Risk** column:
+- One word only: `Critical`, `High`, `Medium`, or `Low`.
+- Base it on the highest-severity STRIDE threat found for that component.
 
-Be specific and reference the actual components in the image."""
+Be specific, use the exact component names visible in the image, and keep every cell brief."""
 
 
 # ---------------------------------------------------------------------------
@@ -242,8 +241,8 @@ class GeminiAnalyzer:
                 config=types.GenerateContentConfig(
                     # Low temperature → consistent, factual threat reports
                     temperature=0.2,
-                    # 4 096 tokens covers a full 5-section STRIDE report with headroom
-                    max_output_tokens=4096,
+                    # 1 500 tokens is ample for the compact 3-section report
+                    max_output_tokens=1500,
                     # Disable Automatic Function Calling (AFC).
                     # The SDK enables AFC by default (up to 10 chained API calls).
                     # Since this is a pure prompt+image → text flow with no tools
