@@ -1,144 +1,119 @@
-# STRIDE-YOLO: Automated Threat Modeling with AI
+# STRIDE Threat Analyzer
 
-[![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
-[![YOLO](https://img.shields.io/badge/YOLO-v8-orange.svg)](https://ultralytics.com/)
-[![Docker](https://img.shields.io/badge/Docker-GPU%20%7C%20CPU-green.svg)](https://www.docker.com/)
+AI-powered cloud architecture security analysis using the **STRIDE** threat modeling methodology.
 
-An AI-powered tool that automatically performs **STRIDE threat modeling** by analyzing software architecture diagrams. Developed as an MVP for FIAP Software Security to validate the feasibility of automated vulnerability analysis in system architectures.
+Upload a cloud architecture diagram (AWS, Azure, or GCP) and receive a comprehensive threat model report — powered by **Google Gemini**.
 
-## Overview
+## How It Works
 
-This application uses a **YOLOv8** object detection model trained to identify cloud infrastructure components (AWS, Azure, GCP) in architecture diagrams. Once detected, each component is mapped to potential security threats using the **STRIDE methodology**:
+1. **Upload** your cloud architecture diagram through the web UI
+2. **Gemini analyzes** the image — identifying all cloud components, data flows, and trust boundaries
+3. **STRIDE report** is generated with threats and mitigations for each component
 
-| STRIDE | Threat Type | Description |
-|--------|-------------|-------------|
-| **S** | Spoofing | Impersonating users or systems |
-| **T** | Tampering | Modifying data or code maliciously |
-| **R** | Repudiation | Denying actions without audit trail |
-| **I** | Information Disclosure | Exposing sensitive data |
-| **D** | Denial of Service | Making services unavailable |
-| **E** | Elevation of Privilege | Gaining unauthorized access |
+The STRIDE methodology evaluates six threat categories:
+- **S**poofing — identity impersonation
+- **T**ampering — data/code modification
+- **R**epudiation — untraceable actions
+- **I**nformation Disclosure — data exposure
+- **D**enial of Service — availability attacks
+- **E**levation of Privilege — unauthorized access
 
-## Features
+## Quick Start (Docker)
 
-- 🔍 **Automatic Component Detection**: Identifies 111 cloud service icons (AWS, Azure, GCP)
-- 📊 **STRIDE Threat Mapping**: Maps each component to specific security threats
-- 📝 **Markdown Report Generation**: Produces actionable threat model reports
-- 🚀 **GPU Acceleration**: Supports NVIDIA GPUs for faster training
-- 🐳 **Dockerized**: Easy deployment with CPU or GPU support
+### Prerequisites
+- Docker
+- A [Gemini API key](https://aistudio.google.com/apikey) (free)
+
+### Build & Run
+
+```bash
+# Build the image
+docker build -t stride-analyzer .
+
+# Run the container (pass your API key as an env var)
+docker run -p 8080:8080 -e GEMINI_API_KEY="your-key-here" stride-analyzer
+```
+
+Then open **http://localhost:8080** in your browser.
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GEMINI_API_KEY` | **Yes** | — | Your Gemini API key from [AI Studio](https://aistudio.google.com/apikey) |
+| `GEMINI_MODEL` | No | `gemini-2.0-flash-lite` | Gemini model to use (e.g. `gemini-2.5-flash-lite`) |
+| `PORT` | No | `8080` | Server port (auto-set by Cloud Run) |
+
+## Running Without Docker
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set your API key
+export GEMINI_API_KEY="your-key-here"
+
+# Run the development server
+python src/main.py
+```
+
+## Deploying to Google Cloud Run
+
+### 1. Store your API key in Secret Manager
+
+```bash
+echo -n "YOUR_GEMINI_API_KEY" | \
+  gcloud secrets create gemini-api-key --data-file=-
+
+# Grant Cloud Run access to read the secret
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:YOUR_PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### 2. Build & push the image
+
+```bash
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/stride-analyzer
+```
+
+### 3. Deploy
+
+```bash
+gcloud run deploy stride-analyzer \
+  --image gcr.io/YOUR_PROJECT_ID/stride-analyzer \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest" \
+  --set-env-vars="GEMINI_MODEL=gemini-2.5-flash-lite" \
+  --memory=512Mi \
+  --timeout=120
+```
+
+> The `--set-secrets` flag injects the API key as an environment variable at runtime — it never appears in the image, source code, or deploy logs.
 
 ## Project Structure
 
 ```
-├── dataset/
-│   ├── dataset_augmented/     # Training images + XML annotations
-│   └── yolo_format/           # Converted YOLO format (auto-generated)
-├── models/
-│   ├── train_run/             # Training artifacts and metrics
-│   └── yolo_stride_v1.pt      # Trained model
+├── Dockerfile              # Container image definition (Cloud Run ready)
+├── requirements.txt        # Python dependencies
 ├── src/
-│   ├── main.py                # CLI entry point
-│   ├── training/
-│   │   ├── data_prep.py       # Dataset conversion (XML → YOLO)
-│   │   └── train.py           # YOLO training pipeline
-│   └── inference/
-│       └── threat_model.py    # STRIDE threat mapping & inference
-├── input_images/              # Images for inference testing
-├── docker-compose.debug.yml   # CPU training/inference
-├── docker-compose.gpu.yml     # GPU training/inference
-├── Dockerfile                 # CPU Docker image
-├── Dockerfile.gpu             # GPU Docker image (CUDA)
-└── requirements.txt           # Python dependencies
+│   ├── main.py             # Flask web application
+│   ├── services/
+│   │   └── gemini_analyzer.py  # Gemini API integration & STRIDE prompt
+│   ├── templates/
+│   │   └── index.html      # Web UI (upload + report display)
+│   └── static/
+│       └── style.css       # UI styling
+└── input_images/           # Sample architecture diagrams
 ```
 
-## Requirements
+## Technology Stack
 
-- Docker & Docker Compose
-- (Optional) NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+- **Backend**: Python 3.10 + Flask + Gunicorn
+- **AI**: Google Gemini (via `google-genai` SDK)
+- **Container**: Docker
+- **Deployment**: Google Cloud Run
+- **Frontend**: Vanilla HTML/CSS/JS with modern dark theme
 
-## How to Run
-
-### 1. Dataset Setup
-
-The training dataset is **not included** in this repository. Download it from Kaggle:
-
-📦 **[Software Architecture Dataset](https://www.kaggle.com/datasets/carlosrian/software-architecture-dataset)**
-
-After downloading, extract and organize the files as follows:
-
-```
-dataset/
-└── dataset_augmented/
-    ├── aws_amazon_api_gateway_0000_aug_0.png
-    ├── aws_amazon_api_gateway_0000_aug_0.xml
-    ├── aws_amazon_api_gateway_0000_aug_1.png
-    ├── aws_amazon_api_gateway_0000_aug_1.xml
-    └── ... (all .png and .xml files)
-```
-
-> **Note**: Each image (`.png`) must have a corresponding annotation file (`.xml`) with the same name. The `yolo_format/` folder will be auto-generated during training.
-
-### 2. Training
-
-**With GPU (recommended):**
-```bash
-docker compose -f docker-compose.gpu.yml build
-docker compose -f docker-compose.gpu.yml up
-```
-
-**With CPU only:**
-```bash
-docker compose -f docker-compose.debug.yml build
-docker compose -f docker-compose.debug.yml up
-```
-
-### 3. Inference (Threat Analysis)
-
-Place your architecture diagram in `input_images/`, then run:
-
-```bash
-# GPU
-docker compose -f docker-compose.gpu.yml run --rm app \
-  python src/main.py inference \
-  --image /app/input_images/your_diagram.png
-
-# CPU
-docker compose -f docker-compose.debug.yml run --rm app \
-  python src/main.py inference \
-  --image /app/input_images/your_diagram.png
-```
-
-### Inference Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--image` | (required) | Path to architecture diagram |
-| `--conf` | 0.15 | Confidence threshold (0.0-1.0) |
-| `--imgsz` | 1280 | Inference image size |
-| `--model-path` | auto | Custom model path |
-
-### 4. Output
-
-The report is saved as `input_images/<image_name>_report.md` with:
-- Detected components
-- Confidence scores
-- STRIDE-based threats for each component
-
-## Example Output
-
-```markdown
-## Component: **aws_lambda_lambda_function**
-- **Confidence**: 0.85
-- **Potential Threats (STRIDE)**:
-  - Tampering: Malicious code injection via dependencies.
-  - Denial of Service: Concurrency limit exhaustion.
-  - Elevation of Privilege: Over-permissive IAM execution role.
-```
-
-## Dataset
-
-The model was trained on the [Software Architecture Dataset](https://www.kaggle.com/datasets/carlosrian/software-architecture-dataset) from Kaggle, containing annotated cloud architecture icons.
-
-## License
-
-This project was developed as part of FIAP's IA para Devs course.

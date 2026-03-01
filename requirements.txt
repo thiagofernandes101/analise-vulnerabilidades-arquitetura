@@ -1,16 +1,7 @@
 # Core dependencies
-# Add your project dependencies here
+google-genai>=1.0.0
+flask>=3.0
+gunicorn>=22.0
+markdown>=3.5
+Pillow>=10.0
 requests
-
-# Debug dependencies
-debugpy
-
-# YOLO and Threat Modeling dependencies
-# Pin versions for reproducible training results
-ultralytics==8.2.0
-torch>=2.0.0,<2.5.0
-xmltodict
-scikit-learn
-PyYAML
-tqdm
-pandas
