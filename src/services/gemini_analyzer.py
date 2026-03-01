@@ -199,7 +199,7 @@ class GeminiAnalyzer:
         self.model_name = (
             model
             or os.environ.get("GEMINI_MODEL")
-            or "gemini-2.0-flash-lite"
+            or "gemini-2.5-flash-lite"
         )
         self.client = genai.Client(api_key=self.api_key)
         logger.info(f"GeminiAnalyzer initialised — model: {self.model_name}")

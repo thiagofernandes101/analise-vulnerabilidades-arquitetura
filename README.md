@@ -21,31 +21,28 @@ The STRIDE methodology evaluates six threat categories:
 ## Quick Start (Docker)
 
 ### Prerequisites
-- Docker and Docker Compose
+- Docker
 - A [Gemini API key](https://aistudio.google.com/apikey) (free)
 
-### Run
+### Build & Run
 
 ```bash
-# Set your Gemini API key
-export GEMINI_API_KEY="your-key-here"
+# Build the image
+docker build -t stride-analyzer .
 
-# Build and run
-docker compose up --build
+# Run the container (pass your API key as an env var)
+docker run -p 8080:8080 -e GEMINI_API_KEY="your-key-here" stride-analyzer
 ```
 
-Then open **http://localhost:5000** in your browser.
+Then open **http://localhost:8080** in your browser.
 
-### Development
+### Environment Variables
 
-The `src/` directory is mounted as a volume, so changes to the code are reflected without rebuilding.
-
-To rebuild after dependency changes:
-
-```bash
-docker compose build --no-cache
-docker compose up
-```
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GEMINI_API_KEY` | **Yes** | — | Your Gemini API key from [AI Studio](https://aistudio.google.com/apikey) |
+| `GEMINI_MODEL` | No | `gemini-2.0-flash-lite` | Gemini model to use (e.g. `gemini-2.5-flash-lite`) |
+| `PORT` | No | `8080` | Server port (auto-set by Cloud Run) |
 
 ## Running Without Docker
 
@@ -60,11 +57,46 @@ export GEMINI_API_KEY="your-key-here"
 python src/main.py
 ```
 
+## Deploying to Google Cloud Run
+
+### 1. Store your API key in Secret Manager
+
+```bash
+echo -n "YOUR_GEMINI_API_KEY" | \
+  gcloud secrets create gemini-api-key --data-file=-
+
+# Grant Cloud Run access to read the secret
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:YOUR_PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### 2. Build & push the image
+
+```bash
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/stride-analyzer
+```
+
+### 3. Deploy
+
+```bash
+gcloud run deploy stride-analyzer \
+  --image gcr.io/YOUR_PROJECT_ID/stride-analyzer \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-secrets="GEMINI_API_KEY=gemini-api-key:latest" \
+  --set-env-vars="GEMINI_MODEL=gemini-2.5-flash-lite" \
+  --memory=512Mi \
+  --timeout=120
+```
+
+> The `--set-secrets` flag injects the API key as an environment variable at runtime — it never appears in the image, source code, or deploy logs.
+
 ## Project Structure
 
 ```
-├── Dockerfile              # Container image definition
-├── docker-compose.yml      # Docker Compose service config
+├── Dockerfile              # Container image definition (Cloud Run ready)
 ├── requirements.txt        # Python dependencies
 ├── src/
 │   ├── main.py             # Flask web application
@@ -79,7 +111,9 @@ python src/main.py
 
 ## Technology Stack
 
-- **Backend**: Python 3.10 + Flask
-- **AI**: Google Gemini 2.0 Flash (via `google-genai` SDK)
-- **Container**: Docker + Docker Compose
+- **Backend**: Python 3.10 + Flask + Gunicorn
+- **AI**: Google Gemini (via `google-genai` SDK)
+- **Container**: Docker
+- **Deployment**: Google Cloud Run
 - **Frontend**: Vanilla HTML/CSS/JS with modern dark theme
+

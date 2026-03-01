@@ -18,6 +18,7 @@
         const title = reportContent.querySelector('h1')?.textContent?.trim() || 'STRIDE Threat Model Report';
 
         const wrapper = document.createElement('div');
+        wrapper.style.padding = '20px';
         wrapper.className = 'pdf-export-container';
 
         const style = document.createElement('style');
@@ -26,7 +27,6 @@
                 background: #ffffff !important;
                 color: #111827 !important;
                 font-family: 'Inter', Arial, sans-serif;
-                padding: 0;
                 width: 780px;
             }
 
@@ -39,7 +39,6 @@
                 font-size: 24pt;
                 border: none;
                 text-transform: capitalize;
-                /* Reset page styles that could leak in */
                 background-image: none !important;
                 -webkit-background-clip: border-box !important;
                 -webkit-text-fill-color: #ffffff !important;
@@ -53,19 +52,19 @@
                 margin: 20px;
                 border-bottom: 2px solid #e5e7eb;
                 padding-bottom: 8px;
-                /* Reset page styles */
                 -webkit-text-fill-color: #1e40af !important;
             }
 
-            .pdf-export-container p  { margin: 10px 20px; line-height: 1.5; color: #111827 !important; }
             .pdf-export-container li { color: #374151 !important; }
 
             /* ── Tables ── */
             .pdf-export-container table {
-                width: calc(100% - 40px) !important;
+                width: 100% !important;
                 margin: 20px;
                 border-collapse: collapse;
                 table-layout: fixed;
+                page-break-inside: auto !important;
+                margin-top: 10px;
             }
 
             .pdf-export-container th {
@@ -104,22 +103,11 @@
 
             .pdf-export-container tr {
                 page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
-            .pdf-export-container table {
-                page-break-inside: auto !important;
-                margin-top: 10px;
+                page-break-after: auto !important;
             }
 
             .pdf-export-container thead {
                 display: table-header-group;
-            }
-
-            .pdf-export-container h1, 
-            .pdf-export-container h2, 
-            .pdf-export-container p {
-                page-break-after: avoid !important;
-                page-break-inside: avoid !important;
             }
 
             .pdf-export-container tr:nth-child(even) { background-color: #f8fafc; }
@@ -132,18 +120,6 @@
         wrapper.appendChild(style);
         wrapper.appendChild(contentClone);
 
-        // const opt = {
-        //     margin: [10, 0, 15, 0],
-        //     filename: title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf',
-        //     image: { type: 'jpeg', quality: 0.98 },
-        //     html2canvas: {
-        //         scale: 2,
-        //         useCORS: true,
-        //         letterRendering: true,
-        //         backgroundColor: '#ffffff'
-        //     },
-        //     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        // };
         const opt = {
             margin: [10, 0, 15, 0],
             filename: title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf',
