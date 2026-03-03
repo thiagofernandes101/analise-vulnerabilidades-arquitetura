@@ -10,6 +10,36 @@ Initially, this project explored using a custom-trained YOLO computer vision mod
 
 To overcome this, the architecture was pivoted to leverage **Generative AI (Google Gemini)**. By utilizing a multimodal LLM, the system bypasses the complex optical training phase, analyzing diagrams directly with high precision and cross-referencing them with the STRIDE framework.
 
+## architecture
+```mermaid
+graph LR
+    %% Definições de Estilo
+    classDef gcp fill:#e8f0fe,stroke:#4285f4,stroke-width:2px,color:#000;
+    classDef container fill:#fff,stroke:#0F9D58,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
+    classDef external fill:#f9f9f9,stroke:#666,stroke-width:2px,color:#000;
+
+    Client["📱 Aplicação Cliente\n(Browser/Mobile)"]:::external
+
+    subgraph "Google Cloud Platform"
+        subgraph "Cloud Run Service (Orquestrador)"
+            BackendApp["📦 Aplicação Backend em Docker\n(Lógica de Negócio)"]:::container
+        end
+        
+        %% O serviço de IA externo ao compute
+        GeminiAPI["🧠 Google Gemini API\n(Vertex AI LLM)"]:::gcp
+    end
+
+    %% Fluxo Simplificado
+    Client -- "1. Requisição HTTPS" --> BackendApp
+    BackendApp -- "2. Envia Prompt (Autenticado)" --> GeminiAPI
+    GeminiAPI -- "3. Retorna Resposta IA" --> BackendApp
+    BackendApp -- "4. Resposta Final" --> Client
+
+    %% Estilização dos Links para clareza
+    linkStyle 0,3 stroke:#4285f4,stroke-width:2px;
+    linkStyle 1,2 stroke:#0F9D58,stroke-width:2px;
+```
+
 ## Key Features
 
 - **Automated Threat Modeling**: Analyzes architecture diagrams using Gemini to identify components, data flows, and trust boundaries.
