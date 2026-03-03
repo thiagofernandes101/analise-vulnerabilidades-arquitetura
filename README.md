@@ -10,7 +10,7 @@ Initially, this project explored using a custom-trained YOLO computer vision mod
 
 To overcome this, the architecture was pivoted to leverage **Generative AI (Google Gemini)**. By utilizing a multimodal LLM, the system bypasses the complex optical training phase, analyzing diagrams directly with high precision and cross-referencing them with the STRIDE framework.
 
-## architecture
+## Architecture
 ```mermaid
 graph LR
     %% Definições de Estilo
