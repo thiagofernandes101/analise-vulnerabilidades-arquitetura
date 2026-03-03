@@ -4,11 +4,25 @@ AI-powered cloud architecture security analysis using the **STRIDE** threat mode
 
 Upload a cloud architecture diagram (AWS, Azure, or GCP) and receive a comprehensive threat model report — powered by **Google Gemini**.
 
+## Project Context & Evolution
+
+Initially, this project explored using a custom-trained YOLO computer vision model to recognize cloud components. However, curating a balanced dataset for over a thousand component classes proved inefficient due to time and hardware constraints, resulting in low detection accuracy.
+
+To overcome this, the architecture was pivoted to leverage **Generative AI (Google Gemini)**. By utilizing a multimodal LLM, the system bypasses the complex optical training phase, analyzing diagrams directly with high precision and cross-referencing them with the STRIDE framework.
+
+## Key Features
+
+- **Automated Threat Modeling**: Analyzes architecture diagrams using Gemini to identify components, data flows, and trust boundaries.
+- **Token & Cost Optimization**: Automatically resizes and optimizes images before API transmission to reduce token usage and handles quota limits gracefully.
+- **Export to PDF**: Generates a clean, academic-style PDF report with a formal layout (white background, dark text, blue headers).
+- **Export to Excel**: Downloads the threat model as an actionable spreadsheet, including crucial `Status` and `Notes` columns for continuous tracking and remediation.
+
 ## How It Works
 
-1. **Upload** your cloud architecture diagram through the web UI
-2. **Gemini analyzes** the image — identifying all cloud components, data flows, and trust boundaries
-3. **STRIDE report** is generated with threats and mitigations for each component
+1. **Upload** your cloud architecture diagram through the web UI.
+2. **AI Analysis**: Gemini processes the image, interpreting the architecture context.
+3. **STRIDE Report**: A detailed report is generated with threats and mitigations dynamically rendered on screen.
+4. **Export & Track**: Download the evidence as PDF or Excel to share with your security and infrastructure teams.
 
 The STRIDE methodology evaluates six threat categories:
 - **S**poofing — identity impersonation
@@ -105,6 +119,9 @@ gcloud run deploy stride-analyzer \
 │   ├── templates/
 │   │   └── index.html      # Web UI (upload + report display)
 │   └── static/
+│       ├── app.js          # Core UI logic
+│       ├── excel-export.js # Excel generation logic
+│       ├── pdf-export.js   # PDF generation logic
 │       └── style.css       # UI styling
 └── input_images/           # Sample architecture diagrams
 ```
@@ -116,4 +133,5 @@ gcloud run deploy stride-analyzer \
 - **Container**: Docker
 - **Deployment**: Google Cloud Run
 - **Frontend**: Vanilla HTML/CSS/JS with modern dark theme
+- **Client Libraries**: `html2pdf.js` (PDF export), `SheetJS/xlsx` (Excel export)
 
